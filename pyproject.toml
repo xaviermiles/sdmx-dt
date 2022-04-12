@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "sdmx-dt"
 version = "0.1.0"
-description = ""
+description = "Parse SDMX into datatables."
 authors = ["xaviermiles <xaviermiles377@gmail.com>"]
 
 [tool.poetry.dependencies]
