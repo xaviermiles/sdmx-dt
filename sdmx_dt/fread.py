@@ -1,5 +1,6 @@
 import json
 
+import jsonschema
 import requests
 
 
@@ -24,30 +25,40 @@ def fread_json(path, is_url=True):
 
 class SdmxJsonDataMessage:
     def __init__(self, message_obj) -> None:
-        self.verify_top_level_object(message_obj)
-        self.meta = SdmxJsonMeta(message_obj.get("meta"))
-        self.data = SdmxJsonData(message_obj.get("data"))
-        self.error = SdmxJsonErrors(message_obj.get("error"))
+        self.validate_with_schema(message_obj)
 
-    def verify_top_level_object(self, message_obj) -> None:
-        """Check top-level object names.
+        if "meta" in message_obj:
+            self.meta = SdmxJsonMeta(message_obj["meta"])
+        else:
+            self.meta = None
 
-        There may be "meta" and there should be exactly one of "data" or
-        "error".
+        if "data" in message_obj.keys():
+            self.data = SdmxJsonData(message_obj["data"])
+        else:
+            self.data = None
+
+        if "errors" in message_obj.keys():
+            self.errors = SdmxJsonErrors(message_obj["errors"])
+        else:
+            self.errors = None
+
+    def validate_with_schema(self, message_obj: dict) -> None:
+        """Validate using JSON schema.
+
+        If "schema" (URL) is provided under "meta" top-level object then that will be
+        used. Otherwise, defaults to SDMX-JSON schema v2.0.0
         """
-        expected_keys = {"meta", "data", "error"}
-        if len({"data", "error"} & message_obj.keys()) == 0:
-            raise InvalidSdmxJsonException(
-                "The message did not contain 'data' or 'error' top-level objects."
+        if "meta" in message_obj.keys() and "schema" in message_obj["meta"].keys():
+            schema_loc = message_obj["meta"]["schema"]
+        else:
+            # TODO: does this detect if both data & errors being present?
+            schema_loc = (
+                "https://github.com/sdmx-twg/sdmx-json/raw/master/metadata-message/"
+                "tools/schemas/2.0.0/sdmx-json-metadata-schema.json"
             )
-        elif len({"data", "error"} & message_obj.keys()) == 2:
-            raise InvalidSdmxJsonException(
-                "The message contained both 'data' and 'error' top-level objects."
-            )
-        elif len(message_obj.keys() - expected_keys) > 0:
-            raise InvalidSdmxJsonException(
-                f"The message contained unexpected top-level objects ({message_obj.keys() - expected_keys})."
-            )
+        r = requests.get(schema_loc)
+        schema = json.loads(r.content)
+        jsonschema.validate(message_obj, schema, cls=jsonschema.Draft202012Validator)
 
 
 class SdmxJsonMeta:

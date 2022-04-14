@@ -19,8 +19,8 @@ def test_fread_json_samples():
     # TODO: implement __eq__() ?
     # assert message_remote == message_local
 
-    assert type(message_remote) is fread.SdmxJsonDataMessage
+    assert isinstance(message_remote, fread.SdmxJsonDataMessage)
     # Check for empty top-level objects?
-    assert type(message_remote.meta) is fread.SdmxJsonMeta
-    assert type(message_remote.data) is fread.SdmxJsonData
-    assert type(message_remote.error) is fread.SdmxJsonErrors
+    assert isinstance(message_remote.meta, fread.SdmxJsonMeta)
+    assert isinstance(message_remote.data, fread.SdmxJsonData)
+    assert message_remote.errors is None  # this is missing in agri.json
