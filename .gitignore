@@ -8,3 +8,5 @@ poetry.lock
 
 .pytest_cache/
 tests/test_data
+
+sdmx-json-1.0-docs/

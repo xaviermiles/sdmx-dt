@@ -46,7 +46,8 @@ def test_fread_json_local_and_remote_eq(
 def test_fread_json_types(sdmx_json_sample_messages):
     for msg in sdmx_json_sample_messages:
         assert isinstance(msg, fread.SdmxJsonDataMessage)
-        # Check for empty top-level objects?
         assert isinstance(msg.meta, fread.SdmxJsonMeta) or msg.meta is None
         assert isinstance(msg.data, fread.SdmxJsonData) or msg.data is None
-        assert isinstance(msg.errors, fread.SdmxJsonErrors) or msg.errors is None
+        assert isinstance(msg.errors, list) and (
+            len(msg.errors) == 0 or isinstance(msg.errors[0], fread.SdmxJsonError)
+        )

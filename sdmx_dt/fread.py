@@ -37,10 +37,7 @@ class SdmxJsonDataMessage:
         else:
             self.data = None
 
-        if "errors" in message_obj.keys():
-            self.errors = SdmxJsonErrors(message_obj["errors"])
-        else:
-            self.errors = None
+        self.errors = [SdmxJsonError(err) for err in message_obj.get("errors", [])]
 
     def validate_with_schema(self, message_obj: dict) -> None:
         """Validate using JSON schema.
@@ -84,7 +81,7 @@ class SdmxJsonData:
         return True
 
 
-class SdmxJsonErrors:
+class SdmxJsonError:
     def __init__(self, errors_obj) -> None:
         pass
 
