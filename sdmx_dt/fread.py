@@ -60,17 +60,33 @@ class SdmxJsonDataMessage:
         schema = json.loads(r.content)
         jsonschema.validate(message_obj, schema, cls=jsonschema.Draft202012Validator)
 
+    def __eq__(self, other) -> bool:
+        return (
+            self.meta == other.meta
+            and self.data == other.data
+            and self.errors == other.errors
+        )
+
 
 class SdmxJsonMeta:
     def __init__(self, meta_obj) -> None:
         pass
+
+    def __eq__(self, other) -> bool:
+        return True
 
 
 class SdmxJsonData:
     def __init__(self, data_obj) -> None:
         pass
 
+    def __eq__(self, other) -> bool:
+        return True
+
 
 class SdmxJsonErrors:
     def __init__(self, errors_obj) -> None:
         pass
+
+    def __eq__(self, other) -> bool:
+        return True
