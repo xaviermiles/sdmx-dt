@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 
 import jsonschema
 import requests
@@ -73,9 +74,36 @@ class SdmxJsonMeta:
         return True
 
 
+class Link:
+    pass
+
+
+@dataclass
+class DataSet:
+    action: str = "Information"
+    reportingBegin: str = None
+    reportingEnd: str = None
+    validFrom: str = None
+    validTo: str = None
+    publicationYear: str = None
+    publicationPeriod: str = None
+    links: list = None
+    annotations: list[int] = None
+    attributes: list[int] = None
+    series: dict = None
+    observations: dict = None
+
+    def __post_init__(self):
+        if self.links:
+            self.links = [Link(**l) for l in self.links]
+        # "series" and "observations" cannot co-exist
+        assert (self.series is None) != (self.observations is None)
+
+
 class SdmxJsonData:
     def __init__(self, data_obj) -> None:
-        pass
+        if "dataSet" in data_obj.keys():
+            self.dataSet = DataSet(**data_obj["dataSet"])
 
     def __eq__(self, other) -> bool:
         return True
