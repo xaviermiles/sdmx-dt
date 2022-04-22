@@ -147,6 +147,10 @@ class SdmxJsonData:
         return NotImplemented
 
     def get_observations(self):
+        """Get observations datatable
+
+        Comes with columns for values, all dimensions and all attributes.
+        """
         # TODO: should this loop over self.dataSets?
         vals = self.dataSets[0].observations
         dimensions_ref = self.structure.dimensions["observation"]
@@ -191,6 +195,29 @@ class SdmxJsonData:
             {col: [row[col] for row in rows] for col in rows[0].keys()}
         )
         return denormalised_dt
+
+    def get_attributes(self):
+        """Get datatable of dataset-level attributes"""
+        # TODO: add support for localised name and values-name
+        raw = self.structure.attributes.get("dataSet")
+        if raw is None:
+            return None
+        # Can take position 0 of "values" since SDMX-JSON v1.0 field guide line #332:
+        #   "Note that `dimensions` and `attributes` presented at `dataSet` level can
+        #    only have one single component value."
+        extracted = [
+            (attr["id"], attr["name"], attr["values"][0]["name"]) for attr in raw
+        ]
+        extracted_transposed = [list(x) for x in zip(*extracted)]
+
+        colnames = ["id", "name", "values"]
+        attributes = dt.Frame(
+            {
+                colname: colitems
+                for colname, colitems in zip(colnames, extracted_transposed)
+            }
+        )
+        return attributes
 
 
 class SdmxJsonError:

@@ -2,6 +2,7 @@ import os
 
 import pytest
 import requests
+from datatable import Frame
 
 from sdmx_dt import fread
 from tests import DATA_DIR
@@ -45,4 +46,51 @@ def test_fread_json_types(name, sdmx_json_msg_remote):
     assert isinstance(msg.data, fread.SdmxJsonData) or msg.data is None
     assert isinstance(msg.errors, list) and (
         len(msg.errors) == 0 or isinstance(msg.errors[0], fread.SdmxJsonError)
+    )
+
+
+@pytest.mark.parametrize(
+    "expected_attributes",
+    [
+        {
+            "agri.json": Frame(
+                {
+                    "id": [
+                        "UNIT_MEASURE",
+                        "UNIT_MULT",
+                        "BASE_PER",
+                        "PREF_SCALE",
+                        "DECIMALS",
+                    ],
+                    "name": [
+                        "Unit of measure",
+                        "Unit multiplier",
+                        "Base Period",
+                        "Preferred scale",
+                        "Decimals",
+                    ],
+                    "values": [
+                        "Tones",
+                        "Thousands",
+                        "2010=100",
+                        "Thousandth",
+                        "One decimal",
+                    ],
+                }
+            ),
+            "exr/exr-action-delete.json": Frame(
+                {"id": ["TIME_FORMAT"], "name": ["Time Format"], "values": ["Daily"]}
+            ),
+            "exr/exr-cross-section.json": Frame(
+                {"id": ["TIME_FORMAT"], "name": ["Time Format"], "values": ["Daily"]}
+            ),
+        }
+    ],
+)
+def test_get_attributes(name, sdmx_json_msg_remote, expected_attributes):
+    # Using to_dict() method since __eq__() method doesn't seem to work
+    # TODO: Is this sufficient? Or is there more it should check?
+    assert (
+        sdmx_json_msg_remote.data.get_attributes().to_dict()
+        == expected_attributes[name].to_dict()
     )
