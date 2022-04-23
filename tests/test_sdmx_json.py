@@ -12,7 +12,7 @@ from tests import DATA_DIR
 sdmx_json_samples_url = (
     "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/21d2034/data-message/samples/"
 )
-expected = {
+expected_all = {
     "agri.json": {
         "attributes": Frame(
             {
@@ -60,7 +60,7 @@ expected = {
     },
 }
 
-pytestmark = pytest.mark.parametrize("name", expected.keys())
+pytestmark = pytest.mark.parametrize("name", expected_all.keys())
 
 
 @pytest.fixture
@@ -104,9 +104,10 @@ def test_fread_json_types(name, sdmx_json_msg_local):
 
 
 def test_get_attributes(name, sdmx_json_msg_local):
+    actual = sdmx_json_msg_local.data.get_attributes()
+    expected = expected_all[name]["attributes"]
+
     # Using to_dict() method since __eq__() method doesn't seem to work
-    # TODO: Is this sufficient? Or is there more it should check?
-    assert (
-        sdmx_json_msg_local.data.get_attributes().to_dict()
-        == expected[name]["attributes"].to_dict()
-    )
+    assert isinstance(actual, Frame)
+    assert actual.to_dict() == expected.to_dict()
+    assert actual.types == expected.types
