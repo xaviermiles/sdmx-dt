@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 import datatable as dt
 import jsonschema
@@ -109,17 +110,17 @@ class Structure:
 @dataclass
 class DataSet:
     action: str = "Information"
-    reportingBegin: str = None
-    reportingEnd: str = None
-    validFrom: str = None
-    validTo: str = None
-    publicationYear: str = None
-    publicationPeriod: str = None
-    links: list = None
-    annotations: list[int] = None
-    attributes: list[int] = None
-    series: dict = None
-    observations: dict = None
+    reportingBegin: Optional[str] = None
+    reportingEnd: Optional[str] = None
+    validFrom: Optional[str] = None
+    validTo: Optional[str] = None
+    publicationYear: Optional[str] = None
+    publicationPeriod: Optional[str] = None
+    links: Optional[List] = None
+    annotations: Optional[List[int]] = None
+    attributes: Optional[List[int]] = None
+    series: Optional[Dict] = None
+    observations: Optional[Dict] = None
 
     def __post_init__(self):
         # TODO: need to add fields to Link dataclass
