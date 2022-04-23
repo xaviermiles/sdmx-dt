@@ -12,14 +12,55 @@ from tests import DATA_DIR
 sdmx_json_samples_url = (
     "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/21d2034/data-message/samples/"
 )
-pytestmark = pytest.mark.parametrize(
-    "name",
-    [
-        "agri.json",
-        "exr/exr-action-delete.json",
-        "exr/exr-cross-section.json",
-    ],
-)
+expected = {
+    "agri.json": {
+        "attributes": Frame(
+            {
+                "id": [
+                    "UNIT_MEASURE",
+                    "UNIT_MULT",
+                    "BASE_PER",
+                    "PREF_SCALE",
+                    "DECIMALS",
+                ],
+                "name": [
+                    "Unit of measure",
+                    "Unit multiplier",
+                    "Base Period",
+                    "Preferred scale",
+                    "Decimals",
+                ],
+                "values": [
+                    "Tones",
+                    "Thousands",
+                    "2010=100",
+                    "Thousandth",
+                    "One decimal",
+                ],
+            }
+        ),
+    },
+    "exr/exr-action-delete.json": {
+        "attributes": Frame(
+            {
+                "id": ["TIME_FORMAT"],
+                "name": ["Time Format"],
+                "values": ["Daily"],
+            }
+        ),
+    },
+    "exr/exr-cross-section.json": {
+        "attributes": Frame(
+            {
+                "id": ["TIME_FORMAT"],
+                "name": ["Time Format"],
+                "values": ["Daily"],
+            }
+        ),
+    },
+}
+
+pytestmark = pytest.mark.parametrize("name", expected.keys())
 
 
 @pytest.fixture
@@ -52,7 +93,7 @@ def test_fread_json_local_and_remote_eq(
     assert sdmx_json_msg_remote == sdmx_json_msg_local
 
 
-def test_fread_json_types(sdmx_json_msg_local):
+def test_fread_json_types(name, sdmx_json_msg_local):
     msg = sdmx_json_msg_local  # shorter alias
     assert isinstance(msg, sdmx_json.SdmxJsonDataMessage)
     assert isinstance(msg.meta, sdmx_json.SdmxJsonMeta) or msg.meta is None
@@ -62,48 +103,10 @@ def test_fread_json_types(sdmx_json_msg_local):
     )
 
 
-@pytest.mark.parametrize(
-    "expected_attributes",
-    [
-        {
-            "agri.json": Frame(
-                {
-                    "id": [
-                        "UNIT_MEASURE",
-                        "UNIT_MULT",
-                        "BASE_PER",
-                        "PREF_SCALE",
-                        "DECIMALS",
-                    ],
-                    "name": [
-                        "Unit of measure",
-                        "Unit multiplier",
-                        "Base Period",
-                        "Preferred scale",
-                        "Decimals",
-                    ],
-                    "values": [
-                        "Tones",
-                        "Thousands",
-                        "2010=100",
-                        "Thousandth",
-                        "One decimal",
-                    ],
-                }
-            ),
-            "exr/exr-action-delete.json": Frame(
-                {"id": ["TIME_FORMAT"], "name": ["Time Format"], "values": ["Daily"]}
-            ),
-            "exr/exr-cross-section.json": Frame(
-                {"id": ["TIME_FORMAT"], "name": ["Time Format"], "values": ["Daily"]}
-            ),
-        }
-    ],
-)
-def test_get_attributes(name, sdmx_json_msg_local, expected_attributes):
+def test_get_attributes(name, sdmx_json_msg_local):
     # Using to_dict() method since __eq__() method doesn't seem to work
     # TODO: Is this sufficient? Or is there more it should check?
     assert (
         sdmx_json_msg_local.data.get_attributes().to_dict()
-        == expected_attributes[name].to_dict()
+        == expected[name]["attributes"].to_dict()
     )
