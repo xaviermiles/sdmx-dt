@@ -1,5 +1,10 @@
 import os
+import shutil
 
 DATA_DIR = os.path.join("tests", "test_data")
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+# Ensure previous data is cleared
+try:
+    shutil.rmtree(DATA_DIR)
+except FileNotFoundError:
+    pass
+os.makedirs(DATA_DIR)

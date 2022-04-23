@@ -1,53 +1,109 @@
+import json
 import os
 
 import pytest
 import requests
+from datatable import Frame
 
 from sdmx_dt import fread
 from tests import DATA_DIR
 
+# Commit 21d2034 is v1.0 of SDMX-JSON
 sdmx_json_samples_url = (
-    "https://github.com/sdmx-twg/sdmx-json/raw/master/data-message/samples/"
+    "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/21d2034/data-message/samples/"
+)
+pytestmark = pytest.mark.parametrize(
+    "name",
+    [
+        "agri.json",
+        "exr/exr-action-delete.json",
+        "exr/exr-cross-section.json",
+    ],
 )
 
 
 @pytest.fixture
-def sdmx_json_sample_names():
-    return [
-        "agri.json",
-        "constructed-sample-full.json",
-        # "generated-sample.json",  # FIXME: why is this raising DNS problems?
-    ]
+def sdmx_json_msg_remote(name):
+    return fread.fread_json(sdmx_json_samples_url + name)
 
 
 @pytest.fixture
-def sdmx_json_sample_messages(sdmx_json_sample_names):
-    return [fread.fread_json(sdmx_json_samples_url + f) for f in sdmx_json_sample_names]
+def sdmx_json_msg_local(name):
+    path = os.path.join(DATA_DIR, name.split("/")[-1])
+    r = requests.get(sdmx_json_samples_url + name)
+    raw_msg = json.loads(r.content.decode())
 
+    # Fix typo in agri.json. This doesn't preserve original ordering
+    if name == "agri.json":
+        attr_part = raw_msg["data"]["structure"]["attributes"]
+        attr_part["dataSet"] = attr_part.pop("dataset")
 
-@pytest.fixture
-def local_sdmx_json_sample_messages(sdmx_json_sample_names):
-    local_messages = []
-    for name in sdmx_json_sample_names:
-        path = os.path.join(DATA_DIR, name)
-        r = requests.get(sdmx_json_samples_url + name)
-        with open(path, "w") as f:
-            f.write(r.content.decode())
-        local_messages.append(fread.fread_json(path, is_url=False))
-    return local_messages
+    with open(path, "w") as f:
+        json.dump(raw_msg, f, indent=4)
+    return fread.fread_json(path, is_url=False)
 
 
 def test_fread_json_local_and_remote_eq(
-    sdmx_json_sample_messages, local_sdmx_json_sample_messages
+    name, sdmx_json_msg_remote, sdmx_json_msg_local
 ):
-    assert sdmx_json_sample_messages == local_sdmx_json_sample_messages
+    # FIXME: Is it possible to fix agri.json typo when retrieving from remote??
+    if name == "agri.json":
+        return NotImplemented
+    assert sdmx_json_msg_remote == sdmx_json_msg_local
 
 
-def test_fread_json_types(sdmx_json_sample_messages):
-    for msg in sdmx_json_sample_messages:
-        assert isinstance(msg, fread.SdmxJsonDataMessage)
-        assert isinstance(msg.meta, fread.SdmxJsonMeta) or msg.meta is None
-        assert isinstance(msg.data, fread.SdmxJsonData) or msg.data is None
-        assert isinstance(msg.errors, list) and (
-            len(msg.errors) == 0 or isinstance(msg.errors[0], fread.SdmxJsonError)
-        )
+def test_fread_json_types(sdmx_json_msg_local):
+    msg = sdmx_json_msg_local  # shorter alias
+    assert isinstance(msg, fread.SdmxJsonDataMessage)
+    assert isinstance(msg.meta, fread.SdmxJsonMeta) or msg.meta is None
+    assert isinstance(msg.data, fread.SdmxJsonData) or msg.data is None
+    assert isinstance(msg.errors, list) and (
+        len(msg.errors) == 0 or isinstance(msg.errors[0], fread.SdmxJsonError)
+    )
+
+
+@pytest.mark.parametrize(
+    "expected_attributes",
+    [
+        {
+            "agri.json": Frame(
+                {
+                    "id": [
+                        "UNIT_MEASURE",
+                        "UNIT_MULT",
+                        "BASE_PER",
+                        "PREF_SCALE",
+                        "DECIMALS",
+                    ],
+                    "name": [
+                        "Unit of measure",
+                        "Unit multiplier",
+                        "Base Period",
+                        "Preferred scale",
+                        "Decimals",
+                    ],
+                    "values": [
+                        "Tones",
+                        "Thousands",
+                        "2010=100",
+                        "Thousandth",
+                        "One decimal",
+                    ],
+                }
+            ),
+            "exr/exr-action-delete.json": Frame(
+                {"id": ["TIME_FORMAT"], "name": ["Time Format"], "values": ["Daily"]}
+            ),
+            "exr/exr-cross-section.json": Frame(
+                {"id": ["TIME_FORMAT"], "name": ["Time Format"], "values": ["Daily"]}
+            ),
+        }
+    ],
+)
+def test_get_attributes(name, sdmx_json_msg_local, expected_attributes):
+    # Using to_dict() method since __eq__() method doesn't seem to work
+    # TODO: Is this sufficient? Or is there more it should check?
+    assert (
+        sdmx_json_msg_local.data.get_attributes().to_dict()
+        == expected_attributes[name].to_dict()
+    )
