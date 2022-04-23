@@ -5,7 +5,7 @@ import pytest
 import requests
 from datatable import Frame
 
-from sdmx_dt import fread
+from sdmx_dt import sdmx_json
 from tests import DATA_DIR
 
 # Commit 21d2034 is v1.0 of SDMX-JSON
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.parametrize(
 
 @pytest.fixture
 def sdmx_json_msg_remote(name):
-    return fread.fread_json(sdmx_json_samples_url + name)
+    return sdmx_json.fread_json(sdmx_json_samples_url + name)
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def sdmx_json_msg_local(name):
 
     with open(path, "w") as f:
         json.dump(raw_msg, f, indent=4)
-    return fread.fread_json(path, is_url=False)
+    return sdmx_json.fread_json(path, is_url=False)
 
 
 def test_fread_json_local_and_remote_eq(
@@ -54,11 +54,11 @@ def test_fread_json_local_and_remote_eq(
 
 def test_fread_json_types(sdmx_json_msg_local):
     msg = sdmx_json_msg_local  # shorter alias
-    assert isinstance(msg, fread.SdmxJsonDataMessage)
-    assert isinstance(msg.meta, fread.SdmxJsonMeta) or msg.meta is None
-    assert isinstance(msg.data, fread.SdmxJsonData) or msg.data is None
+    assert isinstance(msg, sdmx_json.SdmxJsonDataMessage)
+    assert isinstance(msg.meta, sdmx_json.SdmxJsonMeta) or msg.meta is None
+    assert isinstance(msg.data, sdmx_json.SdmxJsonData) or msg.data is None
     assert isinstance(msg.errors, list) and (
-        len(msg.errors) == 0 or isinstance(msg.errors[0], fread.SdmxJsonError)
+        len(msg.errors) == 0 or isinstance(msg.errors[0], sdmx_json.SdmxJsonError)
     )
 
 
