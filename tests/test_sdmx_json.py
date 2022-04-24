@@ -39,6 +39,51 @@ expected_all = {
                 ],
             }
         ),
+        "observations": Frame(
+            {
+                "Reference area": [
+                    "Banteay Meanchey",
+                    "Banteay Meanchey",
+                    "Banteay Meanchey",
+                    "Banteay Meanchey",
+                    "Battambang",
+                    "Battambang",
+                    "Battambang",
+                    "Battambang",
+                ],
+                "Time Period": [
+                    "2014",
+                    "2015",
+                    "2016",
+                    "2017",
+                    "2014",
+                    "2015",
+                    "2016",
+                    "2017",
+                ],
+                "Value": [
+                    350.154,
+                    389.385,
+                    395.729,
+                    433.638,
+                    442.996,
+                    426.588,
+                    479.686,
+                    522.296,
+                ],
+                "Source": [
+                    "MAFF_Agricultural Statistics_2014",
+                    "MAFF_Agricultural Statistics_2015",
+                    "MAFF_Agricultural Statistics_2016",
+                    "MAFF_Agricultural Statistics_2017",
+                    "MAFF_Agricultural Statistics_2014",
+                    "MAFF_Agricultural Statistics_2015",
+                    "MAFF_Agricultural Statistics_2016",
+                    "MAFF_Agricultural Statistics_2017",
+                ],
+                "Observation status": 8 * ["Normal value"],
+            }
+        ),
     },
     "exr/exr-action-delete.json": {
         "attributes": Frame(
@@ -108,6 +153,17 @@ def test_get_attributes(name, sdmx_json_msg_local):
     expected = expected_all[name]["attributes"]
 
     # Using to_dict() method since __eq__() method doesn't seem to work
+    assert isinstance(actual, Frame)
+    assert actual.to_dict() == expected.to_dict()
+    assert actual.types == expected.types
+
+
+def test_get_observations(name, sdmx_json_msg_local):
+    # FIXME: The two "exr" samples present values at series-level rather
+    #        than observation-level, which is not implemented yet.
+    actual = sdmx_json_msg_local.data.get_observations()
+    expected = expected_all[name]["observations"]
+
     assert isinstance(actual, Frame)
     assert actual.to_dict() == expected.to_dict()
     assert actual.types == expected.types
