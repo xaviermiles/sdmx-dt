@@ -93,6 +93,18 @@ expected_all = {
                 "values": ["Daily"],
             }
         ),
+        "observations": Frame(
+            {
+                "Time period or range": ["2013-01-18", "2013-01-21"],
+                "Currency": ["New Zealand dollar", "New Zealand dollar"],
+                "Value": [40.3426, 40.3],
+                "Series title": [
+                    "New Zealand dollar (NZD)",
+                    "New Zealand dollar (NZD)",
+                ],
+                "Observation status": ["Normal value", "Normal value"],
+            }
+        ),
     },
     "exr/exr-cross-section.json": {
         "attributes": Frame(
@@ -100,6 +112,36 @@ expected_all = {
                 "id": ["TIME_FORMAT"],
                 "name": ["Time Format"],
                 "values": ["Daily"],
+            }
+        ),
+        "observations": Frame(
+            {
+                "Time period or range": [
+                    "2013-01-18",
+                    "2013-01-18",
+                    "2013-01-21",
+                    "2013-01-21",
+                ],
+                "Currency": [
+                    "New Zealand dollar",
+                    "Russian rouble",
+                    "New Zealand dollar",
+                    "Russian rouble",
+                ],
+                "Value": [1.5931, 40.3426, 1.5925, 40.3],
+                "Sample series annotation title": [
+                    "Sample series annotation text",
+                    "Sample series annotation text",
+                    None,
+                    None,
+                ],
+                "Observation status": 4 * ["Normal value"],
+                "Series title": [
+                    "New Zealand dollar (NZD)",
+                    "Russian rouble (RUB)",
+                    "New Zealand dollar (NZD)",
+                    "Russian rouble (RUB)",
+                ],
             }
         ),
     },
