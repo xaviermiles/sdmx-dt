@@ -92,7 +92,7 @@ class Link:
     pass
 
 
-class Structure:
+class DataStructureDefinition:
     def __init__(
         self, links=None, dimensions=None, attributes=None, annotations=None, **kwargs
     ):
@@ -134,7 +134,7 @@ class DataSet:
 class SdmxJsonData:
     def __init__(self, data_obj) -> None:
         if "structure" in data_obj.keys():
-            self.structure = Structure(**data_obj["structure"])
+            self.structure = DataStructureDefinition(**data_obj["structure"])
         else:
             self.structure = None
 
