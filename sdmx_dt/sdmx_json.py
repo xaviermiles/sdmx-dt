@@ -174,7 +174,14 @@ class SdmxJsonData:
                 col_name = attributes_ref[att_num]["name"]
 
                 if att_num > num_attributes_set - 1:
-                    attribute_cols[col_name] = attributes_ref[att_num]["default"]
+                    # Take default "name"
+                    default_id = attributes_ref[att_num]["default"]
+                    default_info = next(
+                        val
+                        for val in attributes_ref[att_num]["values"]
+                        if val["id"] == default_id
+                    )
+                    attribute_cols[col_name] = default_info["name"]
                     continue
 
                 attribute_val = obs_nums[att_num + 1]
