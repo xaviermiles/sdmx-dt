@@ -209,55 +209,13 @@ class SdmxJsonData:
         Comes with columns for values, all dimensions and all attributes.
         """
         vals = self.dataSets[0].observations
-        dimensions_ref = self.structure.dimensions["observation"]
-        attributes_ref = self.structure.attributes["observation"]
 
-        rows = []
-        for dimension_vals_joined, obs_nums in vals.items():
-            dimension_vals = dimension_vals_joined.split(":")
+        obs_dim_cols = self._parse_observations_dimensions(vals.keys())
+        values = [v[0] for v in vals.values()]
+        obs_attr_cols = self._parse_obs_level_attributes(vals.values())
 
-            dimension_cols = {
-                dimensions_ref[dim_num]["name"]: dimensions_ref[dim_num]["values"][
-                    int(val)
-                ]["name"]
-                for dim_num, val in enumerate(dimension_vals)
-            }
-            num_attributes_set = len(obs_nums) - 1  # first slot is for "Value"
-
-            attribute_cols = {}
-            for att_num in range(len(attributes_ref)):
-                col_name = attributes_ref[att_num]["name"]
-
-                if att_num > num_attributes_set - 1:
-                    # Take default "name"
-                    default_id = attributes_ref[att_num]["default"]
-                    default_info = next(
-                        val
-                        for val in attributes_ref[att_num]["values"]
-                        if val["id"] == default_id
-                    )
-                    attribute_cols[col_name] = default_info["name"]
-                    continue
-
-                attribute_val = obs_nums[att_num + 1]
-                if attribute_val is None:
-                    attribute_cols[col_name] = None
-                else:
-                    attribute_cols[col_name] = attributes_ref[att_num]["values"][
-                        attribute_val
-                    ]["name"]
-
-            row = {
-                **dimension_cols,
-                "Value": obs_nums[0],
-                **attribute_cols,
-            }
-            rows.append(row)
-
-        denormalised_dt = dt.Frame(
-            {col: [row[col] for row in rows] for col in rows[0].keys()}
-        )
-        return denormalised_dt
+        observations = {**obs_dim_cols, "Value": values, **obs_attr_cols}
+        return dt.Frame(observations)
 
     def _parse_observations_dimensions(self, obs_dim_keys):
         """Helper to translate observation-level dimensions into columns"""
@@ -294,8 +252,8 @@ class SdmxJsonData:
     ):
         num_attr_set = len(obs_datapoint) - 1  # first slot is for "Value"
 
-        if attr_num > num_attr_set:
-            # Take default "name"
+        if attr_num + 1 > num_attr_set:
+            # Take default "name", when attribute value not specified
             default_id = attr_structure[attr_num]["default"]
             print(attr_num)
             default_info = next(
