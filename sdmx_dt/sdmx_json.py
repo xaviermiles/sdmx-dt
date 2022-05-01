@@ -1,3 +1,4 @@
+import itertools
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -148,11 +149,65 @@ class SdmxJsonData:
         return NotImplemented
 
     def get_observations(self):
-        """Get observations datatable
+        # TODO: implement for messages with multiple dataSets
+        if self.dataSets[0].series:
+            return self.get_series_level()
+        elif self.dataSets[0].observations:
+            return self.get_observations_level()
+
+    def get_series_level(self):
+        """Get observations datatables from series-level"""
+        vals = self.dataSets[0].series
+
+        series_tables = []
+        for series_dims_joined, series_info in vals.items():
+            num_datapoints = len(series_info["observations"].keys())
+
+            # series-level dimensions
+            series_dims = series_dims_joined.split(":")
+            series_dim_ref = self.structure.dimensions["series"]
+
+            series_dim_cols = {
+                series_dim_ref[dim_num]["name"]: num_datapoints
+                * [series_dim_ref[dim_num]["values"][int(val)]["name"]]
+                for dim_num, val in enumerate(series_dims)
+            }
+
+            # observation-level dimensions
+            obs_dim_cols = self._parse_observations_dimensions(
+                series_info["observations"].keys()
+            )
+
+            # values
+            values = [v[0] for v in series_info["observations"].values()]
+
+            # TODO: series-level attributes
+
+            # observation-level attributes
+            obs_attr_cols = self._parse_obs_level_attributes(
+                series_info["observations"].values()
+            )
+
+            # TODO: series/obs annotations??
+
+            series_tables.append(
+                {**series_dim_cols, **obs_dim_cols, "Value": values, **obs_attr_cols}
+            )
+
+        col_names = series_tables[0].keys()
+        full_table = {
+            col_name: list(
+                itertools.chain.from_iterable(s[col_name] for s in series_tables)
+            )
+            for col_name in col_names
+        }
+        return dt.Frame(full_table)
+
+    def get_observations_level(self):
+        """Get observations datatable from observation-level
 
         Comes with columns for values, all dimensions and all attributes.
         """
-        # TODO: should this loop over self.dataSets?
         vals = self.dataSets[0].observations
         dimensions_ref = self.structure.dimensions["observation"]
         attributes_ref = self.structure.attributes["observation"]
@@ -203,6 +258,62 @@ class SdmxJsonData:
             {col: [row[col] for row in rows] for col in rows[0].keys()}
         )
         return denormalised_dt
+
+    def _parse_observations_dimensions(self, obs_dim_keys):
+        """Helper to translate observation-level dimensions into columns"""
+        dim_structure = self.structure.dimensions["observation"]
+
+        obs_dim_vals = [o.split(":") for o in obs_dim_keys]
+        num_dims = len(obs_dim_vals[0])
+        obs_dim_columns = {
+            dim_structure[dim_num]["name"]: [
+                dim_structure[dim_num]["values"][int(vals[dim_num])]["name"]
+                for vals in obs_dim_vals
+            ]
+            for dim_num in range(num_dims)
+        }
+        return obs_dim_columns
+
+    def _parse_obs_level_attributes(self, obs_vals):
+        """Helper to translate observation-level attributes into columns"""
+        attr_structure = self.structure.attributes["observation"]
+
+        obs_attr_columns = {}
+        for attr_num in range(len(attr_structure)):
+            col_name = attr_structure[attr_num]["name"]
+
+            obs_attr_columns[col_name] = [
+                self._parse_single_obs_level_attribute(vals_i, attr_num, attr_structure)
+                for vals_i in obs_vals
+            ]
+
+        return obs_attr_columns
+
+    def _parse_single_obs_level_attribute(
+        self, obs_datapoint, attr_num, attr_structure
+    ):
+        num_attr_set = len(obs_datapoint) - 1  # first slot is for "Value"
+
+        if attr_num > num_attr_set:
+            # Take default "name"
+            default_id = attr_structure[attr_num]["default"]
+            print(attr_num)
+            default_info = next(
+                val
+                for val in attr_structure[attr_num]["values"]
+                if val["id"] == default_id
+            )
+            return default_info["name"]
+
+        attr_idx = obs_datapoint[attr_num + 1]
+        if attr_idx is None:
+            return None  # TODO: check this is correct
+
+        try:
+            attr_name = attr_structure[attr_num]["values"][attr_idx]["name"]
+        except IndexError:
+            return -1  # FIXME: why does this happen?
+        return attr_name
 
     def get_attributes(self):
         """Get datatable of dataset-level attributes"""
