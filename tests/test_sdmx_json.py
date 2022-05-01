@@ -8,9 +8,11 @@ from datatable import Frame
 from sdmx_dt import sdmx_json
 from tests import DATA_DIR
 
-# Commit 21d2034 is v1.0 of SDMX-JSON
+# SDMX-JSON v1.0 aligns to SDMX v2.1
+sdmx_json_v1_commit = "d2bf3f7"
 sdmx_json_samples_url = (
-    "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/21d2034/data-message/samples/"
+    f"https://raw.githubusercontent.com/sdmx-twg/sdmx-json/{sdmx_json_v1_commit}/"
+    "data-message/samples/"
 )
 expected_all = {
     "agri.json": {
