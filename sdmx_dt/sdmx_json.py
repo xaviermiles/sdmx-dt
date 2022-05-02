@@ -1,7 +1,7 @@
 import itertools
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import datatable as dt
 import jsonschema
@@ -148,16 +148,37 @@ class SdmxJsonData:
             return self.__dict__ == other.__dict__
         return NotImplemented
 
-    def get_observations(self):
-        # TODO: implement for messages with multiple dataSets
-        if self.dataSets[0].series:
+    def get_observations(self) -> Union[List[dt.Frame], dt.Frame]:
+        """Parse dataset(s) from message into datatable(s)
+
+        Empty datatables will be returned for datasets with "Delete" action.
+
+        Returns single datatable if the message only contains one "dataSet".
+        Returns list of datatables if the message contains multiple dataSets.
+        """
+        # TODO: add support for localised name and values-name
+        if len(self.dataSets) > 1:
+            return self.get_dataSets_level()
+        elif self.dataSets[0].series:
             return self.get_series_level()
         elif self.dataSets[0].observations:
             return self.get_observations_level()
 
-    def get_series_level(self):
-        """Get observations datatables from series-level"""
-        vals = self.dataSets[0].series
+    def get_dataSets_level(self) -> List[dt.Frame]:
+        return [
+            self.get_series_level(dataSet_idx=i)
+            if self.dataSets[i].series
+            else self.get_observations_level(dataSet_idx=i)
+            for i in range(len(self.dataSets))
+        ]
+
+    def get_series_level(self, dataSet_idx: int = 0) -> dt.Frame:
+        """Get observations datatable from series-level"""
+        dataSet = self.dataSets[dataSet_idx]
+        if dataSet.action == "Delete":
+            return dt.Frame()
+
+        vals = dataSet.series
 
         series_tables = []
         for series_dims_joined, series_info in vals.items():
@@ -181,17 +202,32 @@ class SdmxJsonData:
             # values
             values = [v[0] for v in series_info["observations"].values()]
 
-            # TODO: series-level attributes
+            # series-level attributes
+            if series_info.get("attributes"):
+                series_attr_cols = self._parse_attributes(
+                    series_info["attributes"],
+                    self.structure.attributes["series"],
+                    num_repeats=num_datapoints,
+                )
+            else:
+                series_attr_cols = {}
 
             # observation-level attributes
-            obs_attr_cols = self._parse_obs_level_attributes(
-                series_info["observations"].values()
+            obs_attr_cols = self._parse_attributes(
+                [v[1:] for v in series_info["observations"].values()],
+                self.structure.attributes["observation"],
             )
 
             # TODO: series/obs annotations??
 
             series_tables.append(
-                {**series_dim_cols, **obs_dim_cols, "Value": values, **obs_attr_cols}
+                {
+                    **series_dim_cols,
+                    **obs_dim_cols,
+                    "Value": values,
+                    **series_attr_cols,
+                    **obs_attr_cols,
+                }
             )
 
         col_names = series_tables[0].keys()
@@ -203,16 +239,19 @@ class SdmxJsonData:
         }
         return dt.Frame(full_table)
 
-    def get_observations_level(self):
-        """Get observations datatable from observation-level
+    def get_observations_level(self, dataSet_idx: int = 0) -> dt.Frame:
+        """Get observations datatable from observation-level"""
+        dataSet = self.dataSets[dataSet_idx]
+        if dataSet.action == "Delete":
+            return dt.Frame()
 
-        Comes with columns for values, all dimensions and all attributes.
-        """
-        vals = self.dataSets[0].observations
+        vals = dataSet.observations
 
         obs_dim_cols = self._parse_observations_dimensions(vals.keys())
         values = [v[0] for v in vals.values()]
-        obs_attr_cols = self._parse_obs_level_attributes(vals.values())
+        obs_attr_cols = self._parse_attributes(
+            [v[1:] for v in vals.values()], self.structure.attributes["observation"]
+        )
 
         observations = {**obs_dim_cols, "Value": values, **obs_attr_cols}
         return dt.Frame(observations)
@@ -232,43 +271,36 @@ class SdmxJsonData:
         }
         return obs_dim_columns
 
-    def _parse_obs_level_attributes(self, obs_vals):
-        """Helper to translate observation-level attributes into columns"""
-        attr_structure = self.structure.attributes["observation"]
+    def _parse_attributes(self, attr_vals, attr_structure, num_repeats=1):
+        """Helper to translate attributes into columns
 
-        obs_attr_columns = {}
-        for attr_num in range(len(attr_structure)):
-            col_name = attr_structure[attr_num]["name"]
-
-            obs_attr_columns[col_name] = [
-                self._parse_single_obs_level_attribute(vals_i, attr_num, attr_structure)
-                for vals_i in obs_vals
+        This can be used for observation-level or series-level attributes.
+        """
+        attr_columns = {
+            structure_i["name"]: num_repeats
+            * [
+                self._parse_single_attribute(obs_val_j, i, structure_i)
+                for obs_val_j in attr_vals
             ]
+            for i, structure_i in enumerate(attr_structure)
+        }
+        return attr_columns
 
-        return obs_attr_columns
-
-    def _parse_single_obs_level_attribute(
-        self, obs_datapoint, attr_num, attr_structure
-    ):
-        num_attr_set = len(obs_datapoint) - 1  # first slot is for "Value"
-
-        if attr_num + 1 > num_attr_set:
-            # Take default "name", when attribute value not specified
-            default_id = attr_structure[attr_num]["default"]
-            print(attr_num)
+    def _parse_single_attribute(self, attr_indices, attr_num, attr_structure_i):
+        if attr_num > len(attr_indices) - 1:
+            # Take default "name", when attribute index not specified
+            default_id = attr_structure_i["default"]
             default_info = next(
-                val
-                for val in attr_structure[attr_num]["values"]
-                if val["id"] == default_id
+                val for val in attr_structure_i["values"] if val["id"] == default_id
             )
             return default_info["name"]
 
-        attr_idx = obs_datapoint[attr_num + 1]
+        attr_idx = attr_indices[attr_num]
         if attr_idx is None:
             return None  # TODO: check this is correct
 
         try:
-            attr_name = attr_structure[attr_num]["values"][attr_idx]["name"]
+            attr_name = attr_structure_i["values"][attr_idx]["name"]
         except IndexError:
             return -1  # FIXME: why does this happen?
         return attr_name
