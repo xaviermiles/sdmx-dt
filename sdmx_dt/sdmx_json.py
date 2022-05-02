@@ -151,7 +151,9 @@ class SdmxJsonData:
     def get_observations(self) -> Union[List[dt.Frame], dt.Frame]:
         """Parse dataset(s) from message into datatable(s)
 
-        Empty datatables will be returned for datasets with "Delete" action.
+        These datatables will contain dimensions, observations values,
+        and attributes, but NOT annotations. Empty datatables will be
+        returned for datasets with "Delete" action.
 
         Returns single datatable if the message only contains one "dataSet".
         Returns list of datatables if the message contains multiple dataSets.
@@ -217,8 +219,6 @@ class SdmxJsonData:
                 [v[1:] for v in series_info["observations"].values()],
                 self.structure.attributes["observation"],
             )
-
-            # TODO: series/obs annotations??
 
             series_tables.append(
                 {

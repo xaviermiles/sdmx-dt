@@ -134,12 +134,6 @@ expected_all = {
                     "Russian rouble",
                 ],
                 "Value": [1.5931, 40.3426, 1.5925, 40.3],
-                "Sample series annotation title": [
-                    "Sample series annotation text",
-                    "Sample series annotation text",
-                    None,
-                    None,
-                ],
                 "Observation status": 4 * ["Normal value"],
                 "Series title": [
                     "New Zealand dollar (NZD)",
