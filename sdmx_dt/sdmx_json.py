@@ -299,10 +299,7 @@ class SdmxJsonData:
         if attr_idx is None:
             return None  # TODO: check this is correct
 
-        try:
-            attr_name = attr_structure_i["values"][attr_idx]["name"]
-        except IndexError:
-            return -1  # FIXME: why does this happen?
+        attr_name = attr_structure_i["values"][attr_idx]["name"]
         return attr_name
 
     def get_attributes(self):

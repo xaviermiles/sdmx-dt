@@ -99,12 +99,9 @@ expected_all = {
             Frame(
                 {
                     "Time period or range": ["2013-01-18", "2013-01-21"],
-                    "Currency": ["New Zealand dollar", "New Zealand dollar"],
+                    "Currency": ["Russian rouble", "Russian rouble"],
                     "Value": [40.3426, 40.3],
-                    "Series title": [
-                        "New Zealand dollar (NZD)",
-                        "New Zealand dollar (NZD)",
-                    ],
+                    "Series title": ["Russian rouble (RUB)", "Russian rouble (RUB)"],
                     "Observation status": ["Normal value", "Normal value"],
                 }
             ),
@@ -164,6 +161,12 @@ def sdmx_json_msg_local(name):
     if name == "agri.json":
         attr_part = raw_msg["data"]["structure"]["attributes"]
         attr_part["dataSet"] = attr_part.pop("dataset")
+    # Fix typos in exr/exr-action-delete.json
+    elif name == "exr/exr-action-delete.json":
+        obs_1 = raw_msg["data"]["dataSets"][0]["series"]["0"]["observations"]["1"]
+        obs_1[1], obs_1[2] = obs_1[2], obs_1[1]
+        obs_2 = raw_msg["data"]["dataSets"][0]["series"]["1"]["observations"]["1"]
+        obs_2[1], obs_2[2] = obs_2[2], obs_2[1]
 
     with open(path, "w") as f:
         json.dump(raw_msg, f, indent=4)
@@ -173,9 +176,10 @@ def sdmx_json_msg_local(name):
 def test_fread_json_local_and_remote_eq(
     name, sdmx_json_msg_remote, sdmx_json_msg_local
 ):
-    # FIXME: Is it possible to fix agri.json typo when retrieving from remote??
-    if name == "agri.json":
+    # FIXME: Is it possible to fix typos when retrieving from remote??
+    if name in ["agri.json", "exr/exr-action-delete.json"]:
         return NotImplemented
+
     assert sdmx_json_msg_remote == sdmx_json_msg_local
 
 
