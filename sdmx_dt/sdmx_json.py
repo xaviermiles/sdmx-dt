@@ -36,13 +36,13 @@ class SdmxJsonDataMessage:
     def __init__(self, message_obj) -> None:
         self.validate_with_schema(message_obj)
 
-        if "meta" in message_obj:
-            self.meta = SdmxJsonMeta(message_obj["meta"])
+        if "meta" in message_obj.keys():
+            self.meta: Optional[SdmxJsonMeta] = SdmxJsonMeta(message_obj["meta"])
         else:
             self.meta = None
 
         if "data" in message_obj.keys():
-            self.data = SdmxJsonData(message_obj["data"])
+            self.data: Optional[SdmxJsonData] = SdmxJsonData(message_obj["data"])
         else:
             self.data = None
 
@@ -133,10 +133,8 @@ class DataSet:
 
 class SdmxJsonData:
     def __init__(self, data_obj) -> None:
-        if "structure" in data_obj.keys():
-            self.structure = DataStructureDefinition(**data_obj["structure"])
-        else:
-            self.structure = None
+        # TODO: Is "structure" truly optional?
+        self.structure = DataStructureDefinition(**data_obj["structure"])
 
         if "dataSets" in data_obj.keys():
             self.dataSets = [DataSet(**d) for d in data_obj["dataSets"]]
@@ -166,6 +164,8 @@ class SdmxJsonData:
         elif self.dataSets[0].observations:
             return self.get_observations_level()
 
+        return dt.Frame()
+
     def get_dataSets_level(self) -> List[dt.Frame]:
         return [
             self.get_series_level(dataSet_idx=i)
@@ -181,6 +181,8 @@ class SdmxJsonData:
             return dt.Frame()
 
         vals = dataSet.series
+        if vals is None:
+            return dt.Frame()
 
         series_tables = []
         for series_dims_joined, series_info in vals.items():
@@ -246,6 +248,8 @@ class SdmxJsonData:
             return dt.Frame()
 
         vals = dataSet.observations
+        if vals is None:
+            return dt.Frame()
 
         obs_dim_cols = self._parse_observations_dimensions(vals.keys())
         values = [v[0] for v in vals.values()]

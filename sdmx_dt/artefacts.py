@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 class Annotation:
@@ -14,18 +15,18 @@ class Artefact:
     """Abstract to handle common SDMX artefact properties"""
 
     id: str
-    agencyID: str = ""
+    agencyID: Optional[str] = None
     version: str = "1.0"
-    name: str = ""
-    names: dict[str, str] = dict()
-    description: str = None
-    descriptions: dict[str, str] = dict()
-    validFrom: str = None
-    validTo: str = None
-    isFinal: bool = None
-    isExternalReference: bool = None
-    annotations: list = []
-    links: list = None
+    name: Optional[str] = None
+    names: Optional[dict] = None
+    description: Optional[str] = None
+    descriptions: Optional[dict] = None
+    validFrom: Optional[str] = None
+    validTo: Optional[str] = None
+    isFinal: Optional[None] = None
+    isExternalReference: Optional[bool] = None
+    annotations: Optional[list] = None
+    links: Optional[list] = None
 
     def __post_init__(self):
         self.annotations = [Annotation(**a) for a in self.annotations]
