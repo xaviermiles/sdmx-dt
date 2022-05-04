@@ -3,9 +3,9 @@ import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
-import datatable as dt
 import jsonschema
 import requests
+from datatable import dt, f
 
 
 class InvalidSdmxJsonException(ValueError):
@@ -106,6 +106,48 @@ class DataStructureDefinition:
         if other.__class__ is self.__class__:
             return self.__dict__ == other.__dict__
         return NotImplemented
+
+    def get_dimensions(
+        self, include_values: bool = False, locale: Optional[str] = None
+    ) -> dt.Frame:
+        """Get datatable of dimensions at all levels
+
+        If `include_values` is True and series or observation level dimensions
+        have multiple values, then each of these will be on a different row.
+        """
+        dim_levels = ["dataSet", "series", "observation"]
+        nested_rows = [
+            self._get_dimensions_rows(dimension, level, include_values, locale)
+            for level in dim_levels
+            for dimension in self.structure.dimensions[level]
+        ]
+        rows = list(itertools.chain.from_iterable(nested_rows))
+        dimensions = dt.Frame(rows)[:, :, dt.sort(f.keyPosition)]
+        return dimensions
+
+    def _get_dimensions_rows(
+        self, dim: dict, level: str, include_values: bool, locale: Optional[str]
+    ) -> List[dict]:
+        base_cols = {
+            "keyPosition": dim["keyPosition"],
+            "id": dim["id"],
+            "name": dim["names"].get(locale) if locale else dim["name"],
+            "level": level,
+        }
+
+        if not include_values:
+            return [base_cols]
+
+        value_ids = [v["id"] for v in dim["values"]]
+        value_names = [
+            v["names"].get(locale) if locale else v["name"] for v in dim["values"]
+        ]
+        # Get a row for each dimension value
+        rows = [
+            {**base_cols, "value_id": val_id, "value_name": val_name}
+            for val_id, val_name in zip(value_ids, value_names)
+        ]
+        return rows
 
 
 @dataclass
@@ -305,6 +347,11 @@ class SdmxJsonData:
 
         attr_name = attr_structure_i["values"][attr_idx]["name"]
         return attr_name
+
+    def get_dimensions(
+        self, include_values: bool = False, locale: Optional[str] = None
+    ) -> dt.Frame:
+        return self.structure.get_dimensions(include_values, locale)
 
     def get_attributes(self):
         """Get datatable of dataset-level attributes"""
