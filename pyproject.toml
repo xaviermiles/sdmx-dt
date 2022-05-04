@@ -13,6 +13,7 @@ jsonschema = "^4.4.0"
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 pre-commit = "^2.18.1"
+mypy = "^0.950"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
