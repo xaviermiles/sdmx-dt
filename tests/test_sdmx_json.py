@@ -95,18 +95,18 @@ expected_all = {
                 "values": ["Daily"],
             }
         ),
-        "observations": Frame(
-            {
-                "Time period or range": ["2013-01-18", "2013-01-21"],
-                "Currency": ["New Zealand dollar", "New Zealand dollar"],
-                "Value": [40.3426, 40.3],
-                "Series title": [
-                    "New Zealand dollar (NZD)",
-                    "New Zealand dollar (NZD)",
-                ],
-                "Observation status": ["Normal value", "Normal value"],
-            }
-        ),
+        "observations": [
+            Frame(
+                {
+                    "Time period or range": ["2013-01-18", "2013-01-21"],
+                    "Currency": ["Russian rouble", "Russian rouble"],
+                    "Value": [40.3426, 40.3],
+                    "Series title": ["Russian rouble (RUB)", "Russian rouble (RUB)"],
+                    "Observation status": ["Normal value", "Normal value"],
+                }
+            ),
+            Frame(),
+        ],
     },
     "exr/exr-cross-section.json": {
         "attributes": Frame(
@@ -131,12 +131,6 @@ expected_all = {
                     "Russian rouble",
                 ],
                 "Value": [1.5931, 40.3426, 1.5925, 40.3],
-                "Sample series annotation title": [
-                    "Sample series annotation text",
-                    "Sample series annotation text",
-                    None,
-                    None,
-                ],
                 "Observation status": 4 * ["Normal value"],
                 "Series title": [
                     "New Zealand dollar (NZD)",
@@ -167,6 +161,12 @@ def sdmx_json_msg_local(name):
     if name == "agri.json":
         attr_part = raw_msg["data"]["structure"]["attributes"]
         attr_part["dataSet"] = attr_part.pop("dataset")
+    # Fix typos in exr/exr-action-delete.json
+    elif name == "exr/exr-action-delete.json":
+        obs_1 = raw_msg["data"]["dataSets"][0]["series"]["0"]["observations"]["1"]
+        obs_1[1], obs_1[2] = obs_1[2], obs_1[1]
+        obs_2 = raw_msg["data"]["dataSets"][0]["series"]["1"]["observations"]["1"]
+        obs_2[1], obs_2[2] = obs_2[2], obs_2[1]
 
     with open(path, "w") as f:
         json.dump(raw_msg, f, indent=4)
@@ -176,9 +176,10 @@ def sdmx_json_msg_local(name):
 def test_fread_json_local_and_remote_eq(
     name, sdmx_json_msg_remote, sdmx_json_msg_local
 ):
-    # FIXME: Is it possible to fix agri.json typo when retrieving from remote??
-    if name == "agri.json":
+    # FIXME: Is it possible to fix typos when retrieving from remote??
+    if name in ["agri.json", "exr/exr-action-delete.json"]:
         return NotImplemented
+
     assert sdmx_json_msg_remote == sdmx_json_msg_local
 
 
@@ -192,22 +193,21 @@ def test_fread_json_types(name, sdmx_json_msg_local):
     )
 
 
-def test_get_attributes(name, sdmx_json_msg_local):
+def test_get_attributes(name, sdmx_json_msg_local, helpers):
     actual = sdmx_json_msg_local.data.get_attributes()
     expected = expected_all[name]["attributes"]
 
-    # Using to_dict() method since __eq__() method doesn't seem to work
-    assert isinstance(actual, Frame)
-    assert actual.to_dict() == expected.to_dict()
-    assert actual.types == expected.types
+    helpers.check_dt_Frames_eq(actual, expected)
 
 
-def test_get_observations(name, sdmx_json_msg_local):
-    # FIXME: The two "exr" samples present values at series-level rather
-    #        than observation-level, which is not implemented yet.
+def test_get_observations(name, sdmx_json_msg_local, helpers):
     actual = sdmx_json_msg_local.data.get_observations()
     expected = expected_all[name]["observations"]
 
-    assert isinstance(actual, Frame)
-    assert actual.to_dict() == expected.to_dict()
-    assert actual.types == expected.types
+    # Should return list of datatables when there is multiple dataSets
+    if isinstance(expected, list):
+        assert isinstance(actual, list)
+        for actual_i, expected_i in zip(actual, expected):
+            helpers.check_dt_Frames_eq(actual_i, expected_i)
+    else:
+        helpers.check_dt_Frames_eq(actual, expected)

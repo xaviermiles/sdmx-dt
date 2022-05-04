@@ -1,6 +1,7 @@
+import itertools
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import datatable as dt
 import jsonschema
@@ -91,7 +92,7 @@ class Link:
     pass
 
 
-class Structure:
+class DataStructureDefinition:
     def __init__(
         self, links=None, dimensions=None, attributes=None, annotations=None, **kwargs
     ):
@@ -133,7 +134,7 @@ class DataSet:
 class SdmxJsonData:
     def __init__(self, data_obj) -> None:
         if "structure" in data_obj.keys():
-            self.structure = Structure(**data_obj["structure"])
+            self.structure = DataStructureDefinition(**data_obj["structure"])
         else:
             self.structure = None
 
@@ -147,62 +148,159 @@ class SdmxJsonData:
             return self.__dict__ == other.__dict__
         return NotImplemented
 
-    def get_observations(self):
-        """Get observations datatable
+    def get_observations(self) -> Union[List[dt.Frame], dt.Frame]:
+        """Parse dataset(s) from message into datatable(s)
 
-        Comes with columns for values, all dimensions and all attributes.
+        These datatables will contain dimensions, observations values,
+        and attributes, but NOT annotations. Empty datatables will be
+        returned for datasets with "Delete" action.
+
+        Returns single datatable if the message only contains one "dataSet".
+        Returns list of datatables if the message contains multiple dataSets.
         """
-        # TODO: should this loop over self.dataSets?
-        vals = self.dataSets[0].observations
-        dimensions_ref = self.structure.dimensions["observation"]
-        attributes_ref = self.structure.attributes["observation"]
+        # TODO: add support for localised name and values-name
+        if len(self.dataSets) > 1:
+            return self.get_dataSets_level()
+        elif self.dataSets[0].series:
+            return self.get_series_level()
+        elif self.dataSets[0].observations:
+            return self.get_observations_level()
 
-        rows = []
-        for dimension_vals_joined, obs_nums in vals.items():
-            dimension_vals = dimension_vals_joined.split(":")
+    def get_dataSets_level(self) -> List[dt.Frame]:
+        return [
+            self.get_series_level(dataSet_idx=i)
+            if self.dataSets[i].series
+            else self.get_observations_level(dataSet_idx=i)
+            for i in range(len(self.dataSets))
+        ]
 
-            dimension_cols = {
-                dimensions_ref[dim_num]["name"]: dimensions_ref[dim_num]["values"][
-                    int(val)
-                ]["name"]
-                for dim_num, val in enumerate(dimension_vals)
+    def get_series_level(self, dataSet_idx: int = 0) -> dt.Frame:
+        """Get observations datatable from series-level"""
+        dataSet = self.dataSets[dataSet_idx]
+        if dataSet.action == "Delete":
+            return dt.Frame()
+
+        vals = dataSet.series
+
+        series_tables = []
+        for series_dims_joined, series_info in vals.items():
+            num_datapoints = len(series_info["observations"].keys())
+
+            # series-level dimensions
+            series_dims = series_dims_joined.split(":")
+            series_dim_ref = self.structure.dimensions["series"]
+
+            series_dim_cols = {
+                series_dim_ref[dim_num]["name"]: num_datapoints
+                * [series_dim_ref[dim_num]["values"][int(val)]["name"]]
+                for dim_num, val in enumerate(series_dims)
             }
-            num_attributes_set = len(obs_nums) - 1  # first slot is for "Value"
 
-            attribute_cols = {}
-            for att_num in range(len(attributes_ref)):
-                col_name = attributes_ref[att_num]["name"]
+            # observation-level dimensions
+            obs_dim_cols = self._parse_observations_dimensions(
+                series_info["observations"].keys()
+            )
 
-                if att_num > num_attributes_set - 1:
-                    # Take default "name"
-                    default_id = attributes_ref[att_num]["default"]
-                    default_info = next(
-                        val
-                        for val in attributes_ref[att_num]["values"]
-                        if val["id"] == default_id
-                    )
-                    attribute_cols[col_name] = default_info["name"]
-                    continue
+            # values
+            values = [v[0] for v in series_info["observations"].values()]
 
-                attribute_val = obs_nums[att_num + 1]
-                if attribute_val is None:
-                    attribute_cols[col_name] = None
-                else:
-                    attribute_cols[col_name] = attributes_ref[att_num]["values"][
-                        attribute_val
-                    ]["name"]
+            # series-level attributes
+            if series_info.get("attributes"):
+                series_attr_cols = self._parse_attributes(
+                    series_info["attributes"],
+                    self.structure.attributes["series"],
+                    num_repeats=num_datapoints,
+                )
+            else:
+                series_attr_cols = {}
 
-            row = {
-                **dimension_cols,
-                "Value": obs_nums[0],
-                **attribute_cols,
-            }
-            rows.append(row)
+            # observation-level attributes
+            obs_attr_cols = self._parse_attributes(
+                [v[1:] for v in series_info["observations"].values()],
+                self.structure.attributes["observation"],
+            )
 
-        denormalised_dt = dt.Frame(
-            {col: [row[col] for row in rows] for col in rows[0].keys()}
+            series_tables.append(
+                {
+                    **series_dim_cols,
+                    **obs_dim_cols,
+                    "Value": values,
+                    **series_attr_cols,
+                    **obs_attr_cols,
+                }
+            )
+
+        col_names = series_tables[0].keys()
+        full_table = {
+            col_name: list(
+                itertools.chain.from_iterable(s[col_name] for s in series_tables)
+            )
+            for col_name in col_names
+        }
+        return dt.Frame(full_table)
+
+    def get_observations_level(self, dataSet_idx: int = 0) -> dt.Frame:
+        """Get observations datatable from observation-level"""
+        dataSet = self.dataSets[dataSet_idx]
+        if dataSet.action == "Delete":
+            return dt.Frame()
+
+        vals = dataSet.observations
+
+        obs_dim_cols = self._parse_observations_dimensions(vals.keys())
+        values = [v[0] for v in vals.values()]
+        obs_attr_cols = self._parse_attributes(
+            [v[1:] for v in vals.values()], self.structure.attributes["observation"]
         )
-        return denormalised_dt
+
+        observations = {**obs_dim_cols, "Value": values, **obs_attr_cols}
+        return dt.Frame(observations)
+
+    def _parse_observations_dimensions(self, obs_dim_keys):
+        """Helper to translate observation-level dimensions into columns"""
+        dim_structure = self.structure.dimensions["observation"]
+
+        obs_dim_vals = [o.split(":") for o in obs_dim_keys]
+        num_dims = len(obs_dim_vals[0])
+        obs_dim_columns = {
+            dim_structure[dim_num]["name"]: [
+                dim_structure[dim_num]["values"][int(vals[dim_num])]["name"]
+                for vals in obs_dim_vals
+            ]
+            for dim_num in range(num_dims)
+        }
+        return obs_dim_columns
+
+    def _parse_attributes(self, attr_vals, attr_structure, num_repeats=1):
+        """Helper to translate attributes into columns
+
+        This can be used for observation-level or series-level attributes.
+        """
+        attr_columns = {
+            structure_i["name"]: num_repeats
+            * [
+                self._parse_single_attribute(obs_val_j, i, structure_i)
+                for obs_val_j in attr_vals
+            ]
+            for i, structure_i in enumerate(attr_structure)
+        }
+        return attr_columns
+
+    def _parse_single_attribute(self, attr_indices, attr_num, attr_structure_i):
+        if attr_num > len(attr_indices) - 1:
+            # Take default "name", when attribute index not specified
+            default_id = attr_structure_i["default"]
+            default_info = next(
+                val for val in attr_structure_i["values"] if val["id"] == default_id
+            )
+            return default_info["name"]
+
+        attr_idx = attr_indices[attr_num]
+        if attr_idx is None:
+            return None  # TODO: check this is correct
+
+        attr_name = attr_structure_i["values"][attr_idx]["name"]
+        return attr_name
 
     def get_attributes(self):
         """Get datatable of dataset-level attributes"""
