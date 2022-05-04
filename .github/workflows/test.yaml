@@ -24,5 +24,8 @@ jobs:
       - name: Install Python packages
         run: poetry install
         shell: bash
+      - name: Static analysis
+        run: poetry run mypy sdmx_dt
+        shell: bash
       - name: Run pytest
         run: poetry run pytest -v
