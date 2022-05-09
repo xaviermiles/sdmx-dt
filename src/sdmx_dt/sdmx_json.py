@@ -119,7 +119,7 @@ class DataStructureDefinition:
         nested_rows = [
             self._get_dimensions_rows(dimension, level, include_values, locale)
             for level in dim_levels
-            for dimension in self.structure.dimensions[level]
+            for dimension in self.dimensions[level]
         ]
         rows = list(itertools.chain.from_iterable(nested_rows))
         dimensions = dt.Frame(rows)[:, :, dt.sort(f.keyPosition)]
