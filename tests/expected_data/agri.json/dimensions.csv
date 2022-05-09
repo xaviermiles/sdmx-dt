@@ -1,0 +1,9 @@
+keyPosition,id,name,level,value_id,value_name
+0,REF_AREA,Reference area,observation,ASIKHM001,Banteay Meanchey
+0,REF_AREA,Reference area,observation,ASIKHM002,Battambang
+0,REF_AREA,Reference area,observation,ASIKHM,Cambodia
+2,FREQ,Frequency,dataSet,A,Annual
+3,TIME_PERIOD,Time Period,observation,2014,2014
+3,TIME_PERIOD,Time Period,observation,2015,2015
+3,TIME_PERIOD,Time Period,observation,2016,2016
+3,TIME_PERIOD,Time Period,observation,2017,2017

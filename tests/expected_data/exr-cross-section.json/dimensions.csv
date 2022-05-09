@@ -1,0 +1,9 @@
+keyPosition,id,name,level,value_id,value_name
+0,FREQ,Frequency,dataSet,D,Daily
+1,CURRENCY,Currency,observation,NZD,New Zealand dollar
+1,CURRENCY,Currency,observation,RUB,Russian rouble
+2,CURRENCY_DENOM,Currency denominator,dataSet,EUR,Euro
+3,EXR_TYPE,Exchange rate type,dataSet,SP00,Spot rate
+4,EXR_SUFFIX,Series variation - EXR context,dataSet,A,Average or standardised measure for given frequency
+5,TIME_PERIOD,Time period or range,series,2013-01-18,2013-01-18
+5,TIME_PERIOD,Time period or range,series,2013-01-21,2013-01-21
