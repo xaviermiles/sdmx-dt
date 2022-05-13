@@ -169,7 +169,8 @@ class DataStructureDefinition:
         if not include_values:
             return [base_cols]
 
-        value_ids = [v["id"] for v in component["values"]]
+        # TODO: should value_id be able to be None?
+        value_ids = [v.get("id") for v in component["values"]]
         value_names = [
             v["names"].get(locale) if locale else v["name"] for v in component["values"]
         ]

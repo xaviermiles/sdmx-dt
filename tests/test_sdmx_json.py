@@ -169,13 +169,6 @@ def test_fread_json_types(name, sdmx_json_msg_local):
     )
 
 
-def test_get_attributes(name, sdmx_json_msg_local, helpers):
-    actual = sdmx_json_msg_local.data.get_attributes()
-    expected = expected_all[name]["attributes"]
-
-    helpers.check_dt_Frames_eq(actual, expected)
-
-
 def test_get_observations(name, sdmx_json_msg_local, helpers):
     actual = sdmx_json_msg_local.data.get_observations()
     expected = expected_all[name]["observations"]
@@ -190,12 +183,41 @@ def test_get_observations(name, sdmx_json_msg_local, helpers):
 
 
 def test_get_dimensions(name, sdmx_json_msg_local, expected_dts, helpers):
+    # get_dimensions() should be accessible from SdmxJsonData and DSD
+    # Check for full datatable
     actual = sdmx_json_msg_local.data.structure.get_dimensions(include_values=True)
+    actual2 = sdmx_json_msg_local.data.get_dimensions(include_values=True)
     expected = expected_dts["dimensions"]
 
     helpers.check_dt_Frames_eq(actual, expected)
+    helpers.check_dt_Frames_eq(actual2, expected)
 
-    # Method should be accessible from SdmxJsonData
-    helpers.check_dt_Frames_eq(
-        actual, sdmx_json_msg_local.data.get_dimensions(include_values=True)
-    )
+    # Check for partial datatable
+    partial_columns = ("keyPosition", "id", "name", "level")
+    actual_p = sdmx_json_msg_local.data.structure.get_dimensions()
+    actual2_p = sdmx_json_msg_local.data.get_dimensions()
+    expected_p = helpers.dt_unique(expected, partial_columns)
+
+    assert expected_p.keys() == partial_columns
+    helpers.check_dt_Frames_eq(actual_p, expected_p)
+    helpers.check_dt_Frames_eq(actual2_p, expected_p)
+
+
+def test_get_attributes(name, sdmx_json_msg_local, expected_dts, helpers):
+    # get_attributes() should be accessible from SdmxJsonData and DSD
+    # Check for full datatable
+    actual = sdmx_json_msg_local.data.structure.get_attributes(include_values=True)
+    actual2 = sdmx_json_msg_local.data.get_attributes(include_values=True)
+    expected = expected_dts["attributes"]
+
+    helpers.check_dt_Frames_eq(actual, expected)
+    helpers.check_dt_Frames_eq(actual2, expected)
+
+    # Check for partial datatable
+    partial_columns = ("id", "name", "level")
+    actual_p = sdmx_json_msg_local.data.structure.get_attributes()
+    actual2_p = sdmx_json_msg_local.data.get_attributes()
+    expected_p = helpers.dt_unique(expected, partial_columns)
+
+    helpers.check_dt_Frames_eq(actual_p, expected_p)
+    helpers.check_dt_Frames_eq(actual2_p, expected_p)
