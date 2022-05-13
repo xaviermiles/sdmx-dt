@@ -1,0 +1,5 @@
+id,name,level,value_id,value_name
+TIME_FORMAT,Time Format,dataSet,P1D,Daily
+TITLE,Series title,observation,NA,New Zealand dollar (NZD)
+TITLE,Series title,observation,NA,Russian rouble (RUB)
+OBS_STATUS,Observation status,observation,A,Normal value

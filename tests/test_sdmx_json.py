@@ -16,31 +16,6 @@ sdmx_json_samples_url = (
 )
 expected_all = {
     "agri.json": {
-        "attributes": Frame(
-            {
-                "id": [
-                    "UNIT_MEASURE",
-                    "UNIT_MULT",
-                    "BASE_PER",
-                    "PREF_SCALE",
-                    "DECIMALS",
-                ],
-                "name": [
-                    "Unit of measure",
-                    "Unit multiplier",
-                    "Base Period",
-                    "Preferred scale",
-                    "Decimals",
-                ],
-                "values": [
-                    "Tones",
-                    "Thousands",
-                    "2010=100",
-                    "Thousandth",
-                    "One decimal",
-                ],
-            }
-        ),
         "observations": Frame(
             {
                 "Reference area": [
@@ -88,13 +63,6 @@ expected_all = {
         ),
     },
     "exr/exr-action-delete.json": {
-        "attributes": Frame(
-            {
-                "id": ["TIME_FORMAT"],
-                "name": ["Time Format"],
-                "values": ["Daily"],
-            }
-        ),
         "observations": [
             Frame(
                 {
@@ -109,13 +77,6 @@ expected_all = {
         ],
     },
     "exr/exr-cross-section.json": {
-        "attributes": Frame(
-            {
-                "id": ["TIME_FORMAT"],
-                "name": ["Time Format"],
-                "values": ["Daily"],
-            }
-        ),
         "observations": Frame(
             {
                 "Time period or range": [
