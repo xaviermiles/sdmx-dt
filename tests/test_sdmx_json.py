@@ -3,7 +3,7 @@ import os
 
 import pytest
 import requests
-from datatable import Frame
+from datatable import Frame, dt
 
 from sdmx_dt import sdmx_json
 from tests import DATA_DIR
@@ -16,31 +16,6 @@ sdmx_json_samples_url = (
 )
 expected_all = {
     "agri.json": {
-        "attributes": Frame(
-            {
-                "id": [
-                    "UNIT_MEASURE",
-                    "UNIT_MULT",
-                    "BASE_PER",
-                    "PREF_SCALE",
-                    "DECIMALS",
-                ],
-                "name": [
-                    "Unit of measure",
-                    "Unit multiplier",
-                    "Base Period",
-                    "Preferred scale",
-                    "Decimals",
-                ],
-                "values": [
-                    "Tones",
-                    "Thousands",
-                    "2010=100",
-                    "Thousandth",
-                    "One decimal",
-                ],
-            }
-        ),
         "observations": Frame(
             {
                 "Reference area": [
@@ -88,13 +63,6 @@ expected_all = {
         ),
     },
     "exr/exr-action-delete.json": {
-        "attributes": Frame(
-            {
-                "id": ["TIME_FORMAT"],
-                "name": ["Time Format"],
-                "values": ["Daily"],
-            }
-        ),
         "observations": [
             Frame(
                 {
@@ -109,13 +77,6 @@ expected_all = {
         ],
     },
     "exr/exr-cross-section.json": {
-        "attributes": Frame(
-            {
-                "id": ["TIME_FORMAT"],
-                "name": ["Time Format"],
-                "values": ["Daily"],
-            }
-        ),
         "observations": Frame(
             {
                 "Time period or range": [
@@ -157,10 +118,11 @@ def sdmx_json_msg_local(name):
     r = requests.get(sdmx_json_samples_url + name)
     raw_msg = json.loads(r.content.decode())
 
-    # Fix typo in agri.json. This doesn't preserve original ordering
+    # Fix typos in agri.json. This doesn't preserve original ordering
     if name == "agri.json":
-        attr_part = raw_msg["data"]["structure"]["attributes"]
-        attr_part["dataSet"] = attr_part.pop("dataset")
+        for section_name in ["attributes", "dimensions"]:
+            section = raw_msg["data"]["structure"][section_name]
+            section["dataSet"] = section.pop("dataset")
     # Fix typos in exr/exr-action-delete.json
     elif name == "exr/exr-action-delete.json":
         obs_1 = raw_msg["data"]["dataSets"][0]["series"]["0"]["observations"]["1"]
@@ -171,6 +133,20 @@ def sdmx_json_msg_local(name):
     with open(path, "w") as f:
         json.dump(raw_msg, f, indent=4)
     return sdmx_json.fread_json(path, is_url=False)
+
+
+@pytest.fixture
+def expected_dts(name):
+    suffix = ".csv"
+
+    tidy_name = name.split("/")[-1]
+    name_dir = os.path.join("tests", "expected_data", tidy_name)
+    expected_dts = {
+        f[: -len(suffix)]: dt.fread(os.path.join(name_dir, f))
+        for f in os.listdir(name_dir)
+        if f.endswith(suffix)
+    }
+    return expected_dts
 
 
 def test_fread_json_local_and_remote_eq(
@@ -193,13 +169,6 @@ def test_fread_json_types(name, sdmx_json_msg_local):
     )
 
 
-def test_get_attributes(name, sdmx_json_msg_local, helpers):
-    actual = sdmx_json_msg_local.data.get_attributes()
-    expected = expected_all[name]["attributes"]
-
-    helpers.check_dt_Frames_eq(actual, expected)
-
-
 def test_get_observations(name, sdmx_json_msg_local, helpers):
     actual = sdmx_json_msg_local.data.get_observations()
     expected = expected_all[name]["observations"]
@@ -211,3 +180,44 @@ def test_get_observations(name, sdmx_json_msg_local, helpers):
             helpers.check_dt_Frames_eq(actual_i, expected_i)
     else:
         helpers.check_dt_Frames_eq(actual, expected)
+
+
+def test_get_dimensions(name, sdmx_json_msg_local, expected_dts, helpers):
+    # get_dimensions() should be accessible from SdmxJsonData and DSD
+    # Check for full datatable
+    actual = sdmx_json_msg_local.data.structure.get_dimensions(include_values=True)
+    actual2 = sdmx_json_msg_local.data.get_dimensions(include_values=True)
+    expected = expected_dts["dimensions"]
+
+    helpers.check_dt_Frames_eq(actual, expected)
+    helpers.check_dt_Frames_eq(actual2, expected)
+
+    # Check for partial datatable
+    partial_columns = ("keyPosition", "id", "name", "level")
+    actual_p = sdmx_json_msg_local.data.structure.get_dimensions()
+    actual2_p = sdmx_json_msg_local.data.get_dimensions()
+    expected_p = helpers.dt_unique(expected, partial_columns)
+
+    assert expected_p.keys() == partial_columns
+    helpers.check_dt_Frames_eq(actual_p, expected_p)
+    helpers.check_dt_Frames_eq(actual2_p, expected_p)
+
+
+def test_get_attributes(name, sdmx_json_msg_local, expected_dts, helpers):
+    # get_attributes() should be accessible from SdmxJsonData and DSD
+    # Check for full datatable
+    actual = sdmx_json_msg_local.data.structure.get_attributes(include_values=True)
+    actual2 = sdmx_json_msg_local.data.get_attributes(include_values=True)
+    expected = expected_dts["attributes"]
+
+    helpers.check_dt_Frames_eq(actual, expected)
+    helpers.check_dt_Frames_eq(actual2, expected)
+
+    # Check for partial datatable
+    partial_columns = ("id", "name", "level")
+    actual_p = sdmx_json_msg_local.data.structure.get_attributes()
+    actual2_p = sdmx_json_msg_local.data.get_attributes()
+    expected_p = helpers.dt_unique(expected, partial_columns)
+
+    helpers.check_dt_Frames_eq(actual_p, expected_p)
+    helpers.check_dt_Frames_eq(actual2_p, expected_p)

@@ -3,9 +3,9 @@ import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
-import datatable as dt
 import jsonschema
 import requests
+from datatable import dt, f
 
 
 class InvalidSdmxJsonException(ValueError):
@@ -106,6 +106,80 @@ class DataStructureDefinition:
         if other.__class__ is self.__class__:
             return self.__dict__ == other.__dict__
         return NotImplemented
+
+    def get_dimensions(
+        self, include_values: bool = False, locale: Optional[str] = None
+    ) -> dt.Frame:
+        """Get datatable of dimensions at all levels
+
+        If `include_values` is True and series or observation level dimensions
+        have multiple values, then each of these will be on a different row.
+        """
+        return self._parse_components(self.dimensions, True, include_values, locale)
+
+    def get_attributes(
+        self, include_values: bool = False, locale: Optional[str] = None
+    ):
+        """Get datatable of attributes at all levels
+
+        If `include_values` is True and series or observation level dimensions
+        have multiple values, then each of these will be on a different row.
+        """
+        return self._parse_components(self.attributes, False, include_values, locale)
+
+    def _parse_components(
+        self,
+        components: dict,
+        include_keyPosition: bool,
+        include_values: bool,
+        locale: Optional[str],
+    ):
+        levels = ["dataSet", "series", "observation"]
+        nested_rows = [
+            self._get_components_rows(
+                dimension, include_keyPosition, level, include_values, locale
+            )
+            for level in levels
+            for dimension in components[level]
+        ]
+        rows = list(itertools.chain.from_iterable(nested_rows))
+        tidy_component = dt.Frame(rows)
+        if include_keyPosition:
+            tidy_component = tidy_component[:, :, dt.sort(f.keyPosition)]
+        return tidy_component
+
+    def _get_components_rows(
+        self,
+        component: dict,
+        include_keyPosition: bool,
+        level: str,
+        include_values: bool,
+        locale: Optional[str],
+    ) -> List[dict]:
+        """Helper method to parse information from given component"""
+        base_cols = {
+            "id": component["id"],
+            "name": component["names"].get(locale) if locale else component["name"],
+            "level": level,
+        }
+        if include_keyPosition:
+            # If present, keyPosition is first column
+            base_cols = {"keyPosition": component["keyPosition"], **base_cols}
+
+        if not include_values:
+            return [base_cols]
+
+        # TODO: should value_id be able to be None?
+        value_ids = [v.get("id") for v in component["values"]]
+        value_names = [
+            v["names"].get(locale) if locale else v["name"] for v in component["values"]
+        ]
+        # Get a row for each dimension value
+        rows = [
+            {**base_cols, "value_id": val_id, "value_name": val_name}
+            for val_id, val_name in zip(value_ids, value_names)
+        ]
+        return rows
 
 
 @dataclass
@@ -306,28 +380,17 @@ class SdmxJsonData:
         attr_name = attr_structure_i["values"][attr_idx]["name"]
         return attr_name
 
-    def get_attributes(self):
-        """Get datatable of dataset-level attributes"""
-        # TODO: add support for localised name and values-name
-        raw = self.structure.attributes.get("dataSet")
-        if raw is None:
-            return None
-        # Can take position 0 of "values" since SDMX-JSON v1.0 field guide line #332:
-        #   "Note that `dimensions` and `attributes` presented at `dataSet` level can
-        #    only have one single component value."
-        extracted = [
-            (attr["id"], attr["name"], attr["values"][0]["name"]) for attr in raw
-        ]
-        extracted_transposed = [list(x) for x in zip(*extracted)]
+    def get_dimensions(
+        self, include_values: bool = False, locale: Optional[str] = None
+    ) -> dt.Frame:
+        """Get datatable of dimensions at all levels"""
+        return self.structure.get_dimensions(include_values, locale)
 
-        colnames = ["id", "name", "values"]
-        attributes = dt.Frame(
-            {
-                colname: colitems
-                for colname, colitems in zip(colnames, extracted_transposed)
-            }
-        )
-        return attributes
+    def get_attributes(
+        self, include_values: bool = False, locale: Optional[str] = None
+    ) -> dt.Frame:
+        """Get datatable of attributes at all levels"""
+        return self.structure.get_attributes(include_values, locale)
 
 
 class SdmxJsonError:

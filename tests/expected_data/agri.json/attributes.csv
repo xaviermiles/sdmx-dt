@@ -1,0 +1,11 @@
+id,name,level,value_id,value_name
+UNIT_MEASURE,Unit of measure,dataSet,TONES,Tones
+UNIT_MULT,Unit multiplier,dataSet,"3",Thousands
+BASE_PER,Base Period,dataSet,2010_100,2010=100
+PREF_SCALE,Preferred scale,dataSet,"-3",Thousandth
+DECIMALS,Decimals,dataSet,"1",One decimal
+SOURCE,Source,observation,NA,MAFF_Agricultural Statistics_2014
+SOURCE,Source,observation,NA,MAFF_Agricultural Statistics_2015
+SOURCE,Source,observation,NA,MAFF_Agricultural Statistics_2016
+SOURCE,Source,observation,NA,MAFF_Agricultural Statistics_2017
+OBS_STATUS,Observation status,observation,A,Normal value
