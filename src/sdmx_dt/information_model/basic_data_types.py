@@ -47,8 +47,8 @@ class FacetValueType(Enum):
     DATA_SET_REFERENCE = auto()
 
 
-class ExtendedFacetValueType(FacetValueType):
-    XHTML = str
+# Can't directly extend Enum which has members
+ExtendedFacetValueType = Enum("ExtendedFacetValueType", {**FacetValueType, "XHTML": str})  # type: ignore
 
 
 class FacetType(Enum):
