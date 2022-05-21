@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sdmx_dt.information_model.base import Representation
 from sdmx_dt.information_model.item_scheme import Item, ItemScheme
+from sdmx_dt.information_model.structure import Representation
 
 
 class ISOConceptReference:
@@ -23,10 +23,10 @@ class Concept(Item):
         parent: Optional[Concept] = None,
         **kwargs,
     ) -> None:
+        super().__init__(parent=parent, **kwargs)
         self.core_representation = Representation() if has_core_repr else None
         # TODO: where do ISOConceptReference arguments come from?
         self.ISO_concept = ISOConceptReference("", "", "") if has_ISO_concept else None
-        super().__init__(parent=parent, **kwargs)
 
 
 class ConceptScheme(ItemScheme):

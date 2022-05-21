@@ -50,27 +50,27 @@ class AnnotableArtefact(ABC):
 
 class IdentifiableArtefact(AnnotableArtefact, ABC):
     def __init__(self, id, uri, urn, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.id = id
         self.uri = uri
         self.urn = urn
-        super().__init__(**kwargs)
 
 
 class NameableArtefact(IdentifiableArtefact, ABC):
     def __init__(self, name, description=None, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.name = InternationalString(name)
         self.description = InternationalString(description) if description else None
-        super().__init__(**kwargs)
 
 
 class VersionableArtefact(NameableArtefact, ABC):
     def __init__(
         self, version: str, valid_from: date, valid_to: date, **kwargs
     ) -> None:
+        super().__init__(**kwargs)
         self.version = version
         self.valid_from = valid_from
         self.valid_to = valid_to
-        super().__init__(**kwargs)
 
 
 class MaintainableArtefact(VersionableArtefact, ABC):
@@ -82,11 +82,11 @@ class MaintainableArtefact(VersionableArtefact, ABC):
         structure_url: Uri,
         **kwargs
     ) -> None:
+        super().__init__(**kwargs)
         self.final = final
         self.is_external_reference = is_external_reference
         self.service_url = service_url
         self.structure_url = structure_url
-        super().__init__(**kwargs)
 
     # MaintainableArtefact can call Agency's properties/methods, but not vice versa
 
