@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date
 from enum import Enum, auto
 
@@ -67,12 +68,23 @@ class FacetType(Enum):
     END_TIME = date
 
 
+@dataclass
+class Facet:
+    facet_type: FacetType
+    facet_value: str
+    facet_value_type: FacetValueType
+
+
 class UsageStatus(Enum):
+    """For a DataAttribute instance"""
+
     MANDATORY = str
     CONDITIONAL = str
 
 
 class ActionType(Enum):
+    """The action a receiving system should take when processing content"""
+
     DELETE = str
     REPLACE = str
     APPEND = str
@@ -80,11 +92,15 @@ class ActionType(Enum):
 
 
 class ToValueType(Enum):
+    """Contains attributes to support transformations in StructureMap"""
+
     NAME = str
     DESCRIPTION = str
     ID = str
 
 
 class ConstraintRoleType(Enum):
+    """Contains attributes that identity the purpose of a Constraint"""
+
     ALLOWABLE_CONTENT = str
     ACTUAL_CONTENT = str
