@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from sdmx_dt.information_model.basic_data_types import UsageStatus
 from sdmx_dt.information_model.concept_scheme import Concept
@@ -35,6 +35,11 @@ class Dimension(DimensionComponent):
     pass
 
 
+class DimensionDescriptor(ComponentList):
+    def __init__(self, components: Sequence[DimensionComponent], **kwargs) -> None:
+        super().__init__(components=components, **kwargs)
+
+
 class MeasureDimension(DimensionComponent):
     def __init__(
         self, components: Optional[DimensionDescriptor] = None, **kwargs
@@ -50,9 +55,8 @@ class TimeDimension(DimensionComponent):
         super().__init__(**kwargs)
 
 
-class DimensionDescriptor(ComponentList):
-    def __init__(self, components: List[DimensionComponent], **kwargs) -> None:
-        super().__init__(components=components, **kwargs)
+class AttachmentConstraint:  # TODO
+    pass
 
 
 class GroupDimensionDescriptor(ComponentList):
@@ -60,14 +64,15 @@ class GroupDimensionDescriptor(ComponentList):
         self,
         is_attachment_constraint: bool,
         constraint: Optional[AttachmentConstraint] = None,
-        components: Optional[List[DimensionComponent]] = None,
+        components: Optional[Sequence[Component]] = None,
     ) -> None:
         if constraint and components:
             raise ValueError("`constraint` and `components` are mutually exclusive.")
 
         self.is_attachment_constraint = is_attachment_constraint
         self.constraint = constraint
-        self.components = components
+        # TODO: type of components arg should be `Sequence[DimensionComponent]`
+        self.components = components or []
 
 
 # Attributes
@@ -127,4 +132,5 @@ class DataflowDefinition(StructureUsage):
 class DataStructureDefinition(Structure):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.grouping = DimensionDescriptor()
+        # TODO: add `self.grouping`, which can be of types: AttributeDescriptor,
+        #       DimensionDescriptor, GroupDimensionDescriptor, or MeasureDescriptor.
